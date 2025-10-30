@@ -12,10 +12,10 @@ def job_kirim_quote():
     with app.app_context():
         now = datetime.datetime.now().time().replace(second=0, microsecond=0)
         today = datetime.date.today()
-            
+        
         global_setting = Setting.query.filter_by(key='global_send_time').first()
         if not global_setting: return
-            
+        
         global_time = datetime.datetime.strptime(global_setting.value, '%H:%M:%S').time()
 
         users_to_send = User.query.filter(
@@ -24,17 +24,18 @@ def job_kirim_quote():
         ).all()
 
         if not users_to_send: return
-            
+        
         print(f"[{datetime.datetime.now()}] Menemukan {len(users_to_send)} user untuk dikirimi quote.")
         for user in users_to_send:
             quote = DailyQuote.query.filter_by(
                 tanggal=today, jenis=user.pref_jenis, gaya_bahasa=user.pref_gaya
             ).first()
-                
+            
             if quote:
                 pesan = f"Quote harian untukmu, {user.nama}!\n\n\"{quote.teks}\"\n- {quote.penulis}"
-                if user.email:
-                    delivery_service.send_email(user.email, "Quote Harian Anda", pesan)
+                
+                # --- BLOK EMAIL DIHAPUS DARI SINI ---
+
                 if user.whatsapp_number:
                     delivery_service.send_whatsapp(user.whatsapp_number, pesan)
                 if user.telegram_chat_id:

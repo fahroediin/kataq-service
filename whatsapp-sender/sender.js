@@ -10,16 +10,16 @@ const port = 3000;
 
 console.log('Menginisialisasi WhatsApp Client...');
 
-// Menggunakan LocalAuth untuk menyimpan sesi secara otomatis
+// Menggunakan LocalAuth untuk menyimpan sesi dan menghindari scan berulang
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        headless: true, // Jalankan browser di background
-        args: ['--no-sandbox', '--disable-setuid-sandbox'] // Diperlukan untuk beberapa environment Linux
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
 
-// Event: Menampilkan QR Code di terminal
+// Event untuk menampilkan QR Code di terminal saat pertama kali dijalankan
 client.on('qr', qr => {
     console.log('================================================');
     console.log('Pindai QR Code ini dengan aplikasi WhatsApp Anda:');
@@ -27,19 +27,20 @@ client.on('qr', qr => {
     console.log('================================================');
 });
 
-// Event: WhatsApp siap digunakan
+// Event saat client berhasil terhubung dan siap
 client.on('ready', () => {
     console.log('✅ WhatsApp Client siap digunakan!');
 });
 
-// Event: Gagal otentikasi
+// Event jika otentikasi gagal
 client.on('auth_failure', msg => {
     console.error('❌ Gagal Otentikasi!', msg);
+    process.exit(1); // Keluar dari aplikasi jika sesi tidak valid
 });
 
 client.initialize();
 
-// Endpoint API untuk menerima permintaan dari Python
+// Endpoint API untuk menerima permintaan pengiriman pesan dari layanan Python
 app.post('/send-message', async (req, res) => {
     const { number, message } = req.body;
 
@@ -47,7 +48,7 @@ app.post('/send-message', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Nomor dan pesan diperlukan.' });
     }
 
-    // Format nomor ke format WhatsApp (contoh: 6281... -> 6281...@c.us)
+    // Format nomor ke format ID WhatsApp (contoh: 6281... -> 6281...@c.us)
     const chatId = `${number}@c.us`;
 
     try {
@@ -55,8 +56,8 @@ app.post('/send-message', async (req, res) => {
         console.log(`Pesan berhasil dikirim ke ${number}`);
         res.status(200).json({ success: true, message: 'Pesan berhasil dikirim.' });
     } catch (error) {
-        console.error(`Gagal mengirim pesan ke ${number}:`, error);
-        res.status(500).json({ success: false, error: 'Gagal mengirim pesan.' });
+        console.error(`Gagal mengirim pesan ke ${number}:`, error.message);
+        res.status(500).json({ success: false, error: 'Gagal mengirim pesan. Pastikan nomor valid dan terdaftar di WhatsApp.' });
     }
 });
 
